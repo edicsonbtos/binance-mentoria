@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Mentoría Binance Venezuela</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0a0e17;color:#e2e8f0;padding:24px}
+h1{font-size:24px;font-weight:800;color:#fff;margin-bottom:8px}
+h1 span{color:#00d084}
+h2{font-size:18px;font-weight:700;color:#fff;margin:32px 0 16px;padding-bottom:8px;border-bottom:1px solid rgba(148,163,184,0.1)}
+.subtitle{color:#64748b;font-size:14px;margin-bottom:32px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:32px}
+.stat-card{background:#111827;border:1px solid rgba(148,163,184,0.1);border-radius:12px;padding:20px;text-align:center}
+.stat-card .value{font-size:36px;font-weight:800;color:#00d084;line-height:1}
+.stat-card .label{font-size:12px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-top:8px}
+.card{background:#111827;border:1px solid rgba(148,163,184,0.1);border-radius:16px;padding:24px;margin-bottom:24px}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;padding:10px 12px;border-bottom:1px solid rgba(148,163,184,0.1)}
+td{padding:10px 12px;font-size:13px;color:#cbd5e1;border-bottom:1px solid rgba(148,163,184,0.05)}
+.table-wrap{overflow-x:auto}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.form-group input{width:100%;padding:12px 14px;background:#0a0e17;border:1px solid rgba(148,163,184,0.2);border-radius:10px;color:#fff;font-size:14px;font-family:inherit}
+.form-group input:focus{outline:none;border-color:#00d084}
+.checkbox-group{display:flex;align-items:center;gap:12px;padding:12px 0}
+.checkbox-group input[type="checkbox"]{width:20px;height:20px;accent-color:#00d084}
+.checkbox-group label{margin:0;text-transform:none;font-size:14px;color:#e2e8f0}
+.btn{padding:12px 24px;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s}
+.btn-primary{background:linear-gradient(135deg,#00d084,#00b4d8);color:#0a0e17}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,208,132,0.3)}
+.chart{margin:16px 0}
+.chart-bar{display:flex;align-items:center;margin-bottom:8px}
+.chart-label{width:80px;font-size:12px;color:#94a3b8;text-align:right;padding-right:12px;flex-shrink:0}
+.chart-track{flex:1;height:28px;background:#1e293b;border-radius:6px;overflow:hidden;position:relative}
+.chart-fill{height:100%;background:linear-gradient(90deg,#00d084,#00b4d8);border-radius:6px;transition:width 0.5s;display:flex;align-items:center;justify-content:flex-end;padding-right:8px}
+.chart-fill span{font-size:11px;font-weight:700;color:#0a0e17}
+.empty{color:#475569;font-size:13px;font-style:italic;padding:20px;text-align:center}
+@media(max-width:600px){
+  .stats{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .chart-label{width:60px;font-size:10px}
+}
+</style>
+</head>
+<body>
+
+<h1>Admin <span>Panel</span></h1>
+<p class="subtitle">Gestión de leads, settings y descuentos</p>
+
+<div class="stats" id="stats">
+  <div class="stat-card"><div class="value" id="totalLeads">-</div><div class="label">Leads</div></div>
+  <div class="stat-card"><div class="value" id="totalVisits">-</div><div class="label">Visitas</div></div>
+</div>
+
+<div class="card">
+  <h2>Visitas — Últimos 7 días</h2>
+  <div class="chart" id="visitsChart"></div>
+</div>
+
+<div class="card">
+  <h2>Settings de la Landing</h2>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Precio (USDT)</label>
+      <input type="number" id="sPrecio" min="0">
+    </div>
+    <div class="form-group">
+      <label>Badge</label>
+      <input type="text" id="sBadge">
+    </div>
+    <div class="form-group">
+      <label>Fecha próxima cohorte</label>
+      <input type="text" id="sFecha" placeholder="Ej: 15 de Agosto 2026">
+    </div>
+    <div class="form-group">
+      <label>Número WhatsApp</label>
+      <input type="text" id="sWhatsapp">
+    </div>
+  </div>
+  <div class="checkbox-group">
+    <input type="checkbox" id="sDescuentoActivo">
+    <label for="sDescuentoActivo">Activar descuento general</label>
+  </div>
+  <div class="form-grid" style="margin-top:8px">
+    <div class="form-group">
+      <label>Porcentaje de descuento (1-100)</label>
+      <input type="number" id="sDescuentoPercent" min="1" max="100" placeholder="Ej: 20">
+    </div>
+  </div>
+  <button class="btn btn-primary" onclick="saveSettings()">Guardar cambios</button>
+  <span id="settingsMsg" style="margin-left:12px;font-size:13px"></span>
+</div>
+
+<div class="card">
+  <h2>Leads Registrados</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Nombre</th><th>Apellido</th><th>Correo</th><th>Precio</th><th>Fecha</th></tr></thead>
+      <tbody id="leadsBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+function escapeHtml(str) {
+  if (str == null) return '';
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+async function authFetch(url, opts = {}, isRetry = false) {
+  const res = await fetch(url, opts);
+  if (res.status === 401 && !isRetry) {
+    const u = prompt('Usuario:');
+    const p = prompt('Contraseña:');
+    if (!u || !p) throw new Error('Auth cancelada');
+    const token = btoa(u + ':' + p);
+    opts.headers = { ...opts.headers, Authorization: 'Basic ' + token };
+    return authFetch(url, opts, true);
+  }
+  if (res.status === 401 && isRetry) {
+    throw new Error('Credenciales inválidas');
+  }
+  return res;
+}
+
+async function loadAll() {
+  try {
+    const statsRes = await authFetch('/api/admin/stats');
+    if (statsRes.ok) {
+      const stats = await statsRes.json();
+      document.getElementById('totalLeads').textContent = stats.total_leads;
+      document.getElementById('totalVisits').textContent = stats.total_visits;
+      renderChart(stats.visits_by_day);
+    }
+
+    const settingsRes = await authFetch('/api/admin/settings');
+    if (settingsRes.ok) {
+      const s = await settingsRes.json();
+      document.getElementById('sPrecio').value = s.precio || 150;
+      document.getElementById('sBadge').value = s.badge || '';
+      document.getElementById('sFecha').value = s.fecha || '';
+      document.getElementById('sWhatsapp').value = s.whatsapp || '';
+      document.getElementById('sDescuentoActivo').checked = s.descuento_activo === 'true';
+      document.getElementById('sDescuentoPercent').value = s.descuento_percent || '';
+    }
+
+    const leadsRes = await authFetch('/api/admin/leads');
+    if (leadsRes.ok) {
+      const leads = await leadsRes.json();
+      renderLeads(leads);
+    }
+  } catch (err) {
+    document.querySelector('.subtitle').textContent = 'Error de autenticación: ' + err.message;
+  }
+}
+
+function renderChart(data) {
+  const container = document.getElementById('visitsChart');
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div class="empty">Sin datos de visitas aún</div>';
+    return;
+  }
+  const maxCount = Math.max(...data.map(d => parseInt(d.count)), 1);
+  container.innerHTML = data.map(d => {
+    const pct = (parseInt(d.count) / maxCount) * 100;
+    return '<div class="chart-bar">' +
+      '<div class="chart-label">' + escapeHtml(d.date) + '</div>' +
+      '<div class="chart-track"><div class="chart-fill" style="width:' + pct + '%"><span>' + escapeHtml(d.count) + '</span></div></div>' +
+    '</div>';
+  }).join('');
+}
+
+function renderLeads(leads) {
+  const tbody = document.getElementById('leadsBody');
+  if (!leads.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">Sin leads aún</td></tr>';
+    return;
+  }
+  tbody.innerHTML = leads.map(l => '<tr>' +
+    '<td>' + escapeHtml(l.nombre) + '</td>' +
+    '<td>' + escapeHtml(l.apellido) + '</td>' +
+    '<td>' + escapeHtml(l.correo) + '</td>' +
+    '<td>' + escapeHtml(l.precio_final) + ' USDT</td>' +
+    '<td>' + escapeHtml(new Date(l.created_at).toLocaleDateString('es-VE')) + '</td>' +
+  '</tr>').join('');
+}
+
+async function saveSettings() {
+  const settings = {
+    precio: document.getElementById('sPrecio').value,
+    badge: document.getElementById('sBadge').value,
+    fecha: document.getElementById('sFecha').value,
+    whatsapp: document.getElementById('sWhatsapp').value,
+    descuento_activo: document.getElementById('sDescuentoActivo').checked ? 'true' : 'false',
+    descuento_percent: document.getElementById('sDescuentoPercent').value || '0'
+  };
+  const msg = document.getElementById('settingsMsg');
+  try {
+    const res = await authFetch('/api/admin/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    if (res.ok) {
+      msg.textContent = 'Guardado';
+      msg.style.color = '#00d084';
+    } else {
+      msg.textContent = 'Error al guardar';
+      msg.style.color = '#ef4444';
+    }
+  } catch (err) {
+    msg.textContent = 'Error: ' + err.message;
+    msg.style.color = '#ef4444';
+  }
+}
+
+loadAll();
+</script>
+</body>
+</html>
