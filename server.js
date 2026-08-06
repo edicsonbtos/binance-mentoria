@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -41,10 +42,14 @@ const ALLOWED_SETTINGS = ['precio', 'badge', 'fecha', 'whatsapp', 'descuento_act
 const LEAD_RATE_LIMIT_MS = 5 * 60 * 1000;
 const LEAD_MAX_LENGTH = { nombre: 100, apellido: 100, correo: 254 };
 const RATE_LIMIT_CACHE_MAX = 10000;
+const LOGIN_RATE_LIMIT_MS = 15 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 5;
 
 const visitCache = new Map();
 const authAttempts = new Map();
 const leadRateLimit = new Map();
+const adminTokens = new Map();
+const loginAttempts = new Map();
 let lastDbError = null;
 
 function getClientIp(req) {
@@ -160,39 +165,31 @@ async function initDB() {
   process.exit(1);
 }
 
-function basicAuth(req, res, next) {
+function tokenAuth(req, res, next) {
   const ip = getClientIp(req);
   const now = Date.now();
-  const attempts = authAttempts.get(ip);
+  const attempts = loginAttempts.get(ip);
 
-  if (attempts && attempts.count >= AUTH_MAX_ATTEMPTS && now < attempts.resetTime) {
+  if (attempts && attempts.count >= LOGIN_MAX_ATTEMPTS && now < attempts.resetTime) {
     const remaining = Math.ceil((attempts.resetTime - now) / 60000);
     return res.status(429).json({ error: `Demasiados intentos. Intenta en ${remaining} minutos.` });
   }
 
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Basic ')) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="Admin"');
-    return res.status(401).json({ error: 'Autenticación requerida' });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token requerido' });
   }
 
-  const decoded = Buffer.from(authHeader.split(' ')[1], 'base64').toString();
-  const [user, pass] = decoded.split(':');
+  const token = authHeader.split(' ')[1];
+  const session = adminTokens.get(token);
 
-  if (user === ADMIN_USER && pass === ADMIN_PASSWORD) {
-    authAttempts.delete(ip);
-    return next();
+  if (!session) {
+    return res.status(401).json({ error: 'Token inválido' });
   }
 
-  if (!attempts || now >= attempts.resetTime) {
-    authAttempts.set(ip, { count: 1, resetTime: now + AUTH_BLOCK_MS });
-  } else {
-    attempts.count++;
-  }
-
-  log('warn', `Auth fallida desde IP ${ip}`);
-  res.setHeader('WWW-Authenticate', 'Basic realm="Admin"');
-  return res.status(401).json({ error: 'Credenciales inválidas' });
+  loginAttempts.delete(ip);
+  req.adminUser = session.user;
+  next();
 }
 
 async function sendTelegram(message) {
@@ -403,7 +400,41 @@ app.post('/api/leads', async (req, res) => {
   }
 });
 
-app.get('/api/admin/leads', basicAuth, async (req, res) => {
+app.post('/api/admin/login', async (req, res) => {
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const attempts = loginAttempts.get(ip);
+
+  if (attempts && attempts.count >= LOGIN_MAX_ATTEMPTS && now < attempts.resetTime) {
+    const remaining = Math.ceil((attempts.resetTime - now) / 60000);
+    return res.status(429).json({ error: `Demasiados intentos. Intenta en ${remaining} minutos.` });
+  }
+
+  const { user, password } = req.body;
+
+  if (!user || !password) {
+    return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
+  }
+
+  if (user !== ADMIN_USER || password !== ADMIN_PASSWORD) {
+    if (!attempts || now >= attempts.resetTime) {
+      loginAttempts.set(ip, { count: 1, resetTime: now + LOGIN_RATE_LIMIT_MS });
+    } else {
+      attempts.count++;
+    }
+    log('warn', `Login fallido desde IP ${ip}`);
+    return res.status(401).json({ error: 'Credenciales inválidas' });
+  }
+
+  loginAttempts.delete(ip);
+  const token = crypto.randomBytes(32).toString('hex');
+  adminTokens.set(token, { user: user, createdAt: new Date().toISOString() });
+
+  log('log', `Login exitoso desde IP ${ip}`);
+  res.json({ token });
+});
+
+app.get('/api/admin/leads', tokenAuth, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM leads ORDER BY created_at DESC');
     res.json(result.rows);
@@ -413,7 +444,7 @@ app.get('/api/admin/leads', basicAuth, async (req, res) => {
   }
 });
 
-app.get('/api/admin/stats', basicAuth, async (req, res) => {
+app.get('/api/admin/stats', tokenAuth, async (req, res) => {
   try {
     const totalLeads = await pool.query('SELECT COUNT(*) as count FROM leads');
     const totalVisits = await pool.query('SELECT COUNT(*) as count FROM visits');
@@ -437,7 +468,7 @@ app.get('/api/admin/stats', basicAuth, async (req, res) => {
   }
 });
 
-app.get('/api/admin/settings', basicAuth, async (req, res) => {
+app.get('/api/admin/settings', tokenAuth, async (req, res) => {
   try {
     const result = await pool.query('SELECT key, value FROM settings');
     const settings = {};
@@ -449,7 +480,7 @@ app.get('/api/admin/settings', basicAuth, async (req, res) => {
   }
 });
 
-app.put('/api/admin/settings', basicAuth, async (req, res) => {
+app.put('/api/admin/settings', tokenAuth, async (req, res) => {
   const updates = req.body;
   try {
     for (const [key, value] of Object.entries(updates)) {

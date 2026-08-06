@@ -145,7 +145,7 @@ td{padding:10px 12px;font-size:13px;color:#cbd5e1;border-bottom:1px solid rgba(1
 </div>
 
 <script>
-let authToken = sessionStorage.getItem('adminAuth');
+let authToken = localStorage.getItem('adminToken');
 
 function escapeHtml(str) {
   if (str == null) return '';
@@ -166,17 +166,19 @@ async function handleLogin(e) {
   errorEl.textContent = '';
 
   try {
-    const token = btoa(user + ':' + pass);
-    const res = await fetch('/api/admin/stats', {
-      headers: { 'Authorization': 'Basic ' + token }
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user, password: pass })
     });
+    const data = await res.json();
 
-    if (res.ok) {
-      authToken = token;
-      sessionStorage.setItem('adminAuth', token);
+    if (res.ok && data.token) {
+      authToken = data.token;
+      localStorage.setItem('adminToken', data.token);
       showAdmin();
     } else {
-      errorEl.textContent = 'Credenciales inválidas';
+      errorEl.textContent = data.error || 'Credenciales inválidas';
     }
   } catch (err) {
     errorEl.textContent = 'Error de conexión';
@@ -194,7 +196,7 @@ function showAdmin() {
 }
 
 function logout() {
-  sessionStorage.removeItem('adminAuth');
+  localStorage.removeItem('adminToken');
   authToken = null;
   document.getElementById('loginContainer').style.display = 'flex';
   document.getElementById('adminContent').style.display = 'none';
@@ -202,10 +204,10 @@ function logout() {
 
 async function authFetch(url, opts = {}) {
   if (!authToken) throw new Error('No autenticado');
-  opts.headers = { ...opts.headers, Authorization: 'Basic ' + authToken };
+  opts.headers = { ...opts.headers, Authorization: 'Bearer ' + authToken };
   const res = await fetch(url, opts);
   if (res.status === 401) {
-    sessionStorage.removeItem('adminAuth');
+    localStorage.removeItem('adminToken');
     authToken = null;
     document.getElementById('loginContainer').style.display = 'flex';
     document.getElementById('adminContent').style.display = 'none';
