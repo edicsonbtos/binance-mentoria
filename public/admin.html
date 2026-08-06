@@ -32,6 +32,9 @@ td{padding:10px 12px;font-size:13px;color:#cbd5e1;border-bottom:1px solid rgba(1
 .btn{padding:12px 24px;border:none;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;transition:all 0.3s}
 .btn-primary{background:linear-gradient(135deg,#00d084,#00b4d8);color:#0a0e17}
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,208,132,0.3)}
+.btn-danger{background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3)}
+.btn-danger:hover{background:rgba(239,68,68,0.25)}
+.btn-sm{padding:8px 14px;font-size:12px}
 .chart{margin:16px 0}
 .chart-bar{display:flex;align-items:center;margin-bottom:8px}
 .chart-label{width:80px;font-size:12px;color:#94a3b8;text-align:right;padding-right:12px;flex-shrink:0}
@@ -39,6 +42,21 @@ td{padding:10px 12px;font-size:13px;color:#cbd5e1;border-bottom:1px solid rgba(1
 .chart-fill{height:100%;background:linear-gradient(90deg,#00d084,#00b4d8);border-radius:6px;transition:width 0.5s;display:flex;align-items:center;justify-content:flex-end;padding-right:8px}
 .chart-fill span{font-size:11px;font-weight:700;color:#0a0e17}
 .empty{color:#475569;font-size:13px;font-style:italic;padding:20px;text-align:center}
+
+.login-container{
+  display:flex;justify-content:center;align-items:center;min-height:80vh;
+}
+.login-box{
+  background:#111827;border:1px solid rgba(148,163,184,0.1);border-radius:16px;
+  padding:40px;width:100%;max-width:400px;text-align:center;
+}
+.login-box h2{margin-top:0;border:none;padding:0}
+.login-box .form-group{text-align:left}
+.login-box .btn{width:100%;margin-top:8px}
+.login-error{color:#ef4444;font-size:13px;margin-top:12px;min-height:20px}
+
+#adminContent{display:none}
+
 @media(max-width:600px){
   .stats{grid-template-columns:1fr}
   .form-grid{grid-template-columns:1fr}
@@ -48,64 +66,87 @@ td{padding:10px 12px;font-size:13px;color:#cbd5e1;border-bottom:1px solid rgba(1
 </head>
 <body>
 
-<h1>Admin <span>Panel</span></h1>
-<p class="subtitle">Gestión de leads, settings y descuentos</p>
-
-<div class="stats" id="stats">
-  <div class="stat-card"><div class="value" id="totalLeads">-</div><div class="label">Leads</div></div>
-  <div class="stat-card"><div class="value" id="totalVisits">-</div><div class="label">Visitas</div></div>
+<div id="loginContainer" class="login-container">
+  <div class="login-box">
+    <h1>Admin <span>Panel</span></h1>
+    <h2>Iniciar Sesión</h2>
+    <form id="loginForm" onsubmit="return handleLogin(event)">
+      <div class="form-group">
+        <label>Usuario</label>
+        <input type="text" id="loginUser" placeholder="admin" required>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="loginPass" placeholder="••••••••" required>
+      </div>
+      <button type="submit" class="btn btn-primary" id="loginBtn">Entrar</button>
+      <div class="login-error" id="loginError"></div>
+    </form>
+  </div>
 </div>
 
-<div class="card">
-  <h2>Visitas — Últimos 7 días</h2>
-  <div class="chart" id="visitsChart"></div>
-</div>
+<div id="adminContent">
+  <h1>Admin <span>Panel</span></h1>
+  <p class="subtitle">Gestión de leads, settings y descuentos</p>
 
-<div class="card">
-  <h2>Settings de la Landing</h2>
-  <div class="form-grid">
-    <div class="form-group">
-      <label>Precio (USDT)</label>
-      <input type="number" id="sPrecio" min="0">
-    </div>
-    <div class="form-group">
-      <label>Badge</label>
-      <input type="text" id="sBadge">
-    </div>
-    <div class="form-group">
-      <label>Fecha próxima cohorte</label>
-      <input type="text" id="sFecha" placeholder="Ej: 15 de Agosto 2026">
-    </div>
-    <div class="form-group">
-      <label>Número WhatsApp</label>
-      <input type="text" id="sWhatsapp">
-    </div>
+  <div class="stats" id="stats">
+    <div class="stat-card"><div class="value" id="totalLeads">-</div><div class="label">Leads</div></div>
+    <div class="stat-card"><div class="value" id="totalVisits">-</div><div class="label">Visitas</div></div>
   </div>
-  <div class="checkbox-group">
-    <input type="checkbox" id="sDescuentoActivo">
-    <label for="sDescuentoActivo">Activar descuento general</label>
-  </div>
-  <div class="form-grid" style="margin-top:8px">
-    <div class="form-group">
-      <label>Porcentaje de descuento (1-100)</label>
-      <input type="number" id="sDescuentoPercent" min="1" max="100" placeholder="Ej: 20">
-    </div>
-  </div>
-  <button class="btn btn-primary" onclick="saveSettings()">Guardar cambios</button>
-  <span id="settingsMsg" style="margin-left:12px;font-size:13px"></span>
-</div>
 
-<div class="card">
-  <h2>Leads Registrados</h2>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Nombre</th><th>Apellido</th><th>Correo</th><th>Precio</th><th>Fecha</th></tr></thead>
-      <tbody id="leadsBody"></tbody>
-    </table>
+  <div class="card">
+    <h2>Visitas — Últimos 7 días</h2>
+    <div class="chart" id="visitsChart"></div>
+  </div>
+
+  <div class="card">
+    <h2>Settings de la Landing</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Precio (USDT)</label>
+        <input type="number" id="sPrecio" min="0">
+      </div>
+      <div class="form-group">
+        <label>Badge</label>
+        <input type="text" id="sBadge">
+      </div>
+      <div class="form-group">
+        <label>Fecha próxima cohorte</label>
+        <input type="text" id="sFecha" placeholder="Ej: 15 de Agosto 2026">
+      </div>
+      <div class="form-group">
+        <label>Número WhatsApp</label>
+        <input type="text" id="sWhatsapp">
+      </div>
+    </div>
+    <div class="checkbox-group">
+      <input type="checkbox" id="sDescuentoActivo">
+      <label for="sDescuentoActivo">Activar descuento general</label>
+    </div>
+    <div class="form-grid" style="margin-top:8px">
+      <div class="form-group">
+        <label>Porcentaje de descuento (1-100)</label>
+        <input type="number" id="sDescuentoPercent" min="1" max="100" placeholder="Ej: 20">
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveSettings()">Guardar cambios</button>
+    <span id="settingsMsg" style="margin-left:12px;font-size:13px"></span>
+  </div>
+
+  <div class="card">
+    <h2>Leads Registrados</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Nombre</th><th>Apellido</th><th>Correo</th><th>Precio</th><th>Fecha</th></tr></thead>
+        <tbody id="leadsBody"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
 <script>
+let authToken = sessionStorage.getItem('adminAuth');
+
 function escapeHtml(str) {
   if (str == null) return '';
   const div = document.createElement('div');
@@ -113,18 +154,62 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-async function authFetch(url, opts = {}, isRetry = false) {
-  const res = await fetch(url, opts);
-  if (res.status === 401 && !isRetry) {
-    const u = prompt('Usuario:');
-    const p = prompt('Contraseña:');
-    if (!u || !p) throw new Error('Auth cancelada');
-    const token = btoa(u + ':' + p);
-    opts.headers = { ...opts.headers, Authorization: 'Basic ' + token };
-    return authFetch(url, opts, true);
+async function handleLogin(e) {
+  e.preventDefault();
+  const user = document.getElementById('loginUser').value;
+  const pass = document.getElementById('loginPass').value;
+  const errorEl = document.getElementById('loginError');
+  const btn = document.getElementById('loginBtn');
+
+  btn.disabled = true;
+  btn.textContent = 'Entrando...';
+  errorEl.textContent = '';
+
+  try {
+    const token = btoa(user + ':' + pass);
+    const res = await fetch('/api/admin/stats', {
+      headers: { 'Authorization': 'Basic ' + token }
+    });
+
+    if (res.ok) {
+      authToken = token;
+      sessionStorage.setItem('adminAuth', token);
+      showAdmin();
+    } else {
+      errorEl.textContent = 'Credenciales inválidas';
+    }
+  } catch (err) {
+    errorEl.textContent = 'Error de conexión';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Entrar';
   }
-  if (res.status === 401 && isRetry) {
-    throw new Error('Credenciales inválidas');
+  return false;
+}
+
+function showAdmin() {
+  document.getElementById('loginContainer').style.display = 'none';
+  document.getElementById('adminContent').style.display = 'block';
+  loadAll();
+}
+
+function logout() {
+  sessionStorage.removeItem('adminAuth');
+  authToken = null;
+  document.getElementById('loginContainer').style.display = 'flex';
+  document.getElementById('adminContent').style.display = 'none';
+}
+
+async function authFetch(url, opts = {}) {
+  if (!authToken) throw new Error('No autenticado');
+  opts.headers = { ...opts.headers, Authorization: 'Basic ' + authToken };
+  const res = await fetch(url, opts);
+  if (res.status === 401) {
+    sessionStorage.removeItem('adminAuth');
+    authToken = null;
+    document.getElementById('loginContainer').style.display = 'flex';
+    document.getElementById('adminContent').style.display = 'none';
+    throw new Error('Sesión expirada');
   }
   return res;
 }
@@ -156,7 +241,7 @@ async function loadAll() {
       renderLeads(leads);
     }
   } catch (err) {
-    document.querySelector('.subtitle').textContent = 'Error de autenticación: ' + err.message;
+    document.querySelector('#adminContent .subtitle').textContent = 'Error: ' + err.message;
   }
 }
 
@@ -220,7 +305,9 @@ async function saveSettings() {
   }
 }
 
-loadAll();
+if (authToken) {
+  showAdmin();
+}
 </script>
 </body>
 </html>
