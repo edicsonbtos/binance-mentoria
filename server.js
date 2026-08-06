@@ -223,7 +223,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // HTTPS enforcement (Railway handles TLS, but enforce at app level too)
 app.use((req, res, next) => {
-  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] === 'http') {
     return res.redirect(301, `https://${req.headers.host}${req.url}`);
   }
   next();
