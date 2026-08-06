@@ -4,10 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Propuesta — Mentoría Binance Venezuela</title>
-<meta name="description" content="Mentoría exclusiva de Binance para Venezuela. Aprende a operar con USDT, P2P, y protección financiera. 4 sesiones en vivo con práctica real.">
-<meta property="og:title" content="Mentoría Binance Venezuela">
-<meta property="og:description" content="Domina Binance como herramienta de resguardo, pago e inversión diseñada para el contexto venezolano.">
+<meta name="description" content="Mentoría Binance Venezuela: aprende a resguardar tu dinero, recibir remesas sin comisiones y operar con seguridad real en 4 sesiones en vivo.">
+<meta property="og:title" content="Mentoría Binance Venezuela — De los Bolívares a la Soberanía Digital">
+<meta property="og:description" content="4 sesiones en vivo. Máximo 3 personas. Seguridad real, no teoría.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://binance-mentoria-production.up.railway.app">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
 <link rel="stylesheet" href="styles.css">
 <base target="_blank">
@@ -42,7 +44,7 @@
 
     <div class="timeline">
 
-      <div class="module">
+      <div class="module module-animate">
         <div class="module-number">01</div>
         <h3>Blindaje y Contexto</h3>
         <div class="tagline">Entender el enemigo antes de pelear</div>
@@ -58,7 +60,7 @@
         </ul>
       </div>
 
-      <div class="module">
+      <div class="module module-animate">
         <div class="module-number">02</div>
         <h3>El Mapa del Dinero</h3>
         <div class="tagline">Saber dónde está tu dinero y para qué sirve cada billetera</div>
@@ -75,7 +77,7 @@
         </ul>
       </div>
 
-      <div class="module">
+      <div class="module module-animate">
         <div class="module-number">03</div>
         <h3>Canales Sin Fronteras</h3>
         <div class="tagline">Mover dinero entre mundos sin perderlo</div>
@@ -91,7 +93,7 @@
         </ul>
       </div>
 
-      <div class="module">
+      <div class="module module-animate">
         <div class="module-number">04</div>
         <h3>Inversión y Ecosistema Real</h3>
         <div class="tagline">Hacer que tu dinero trabaje mientras duermes</div>
@@ -107,7 +109,7 @@
         </ul>
       </div>
 
-      <div class="module">
+      <div class="module module-animate">
         <div class="module-number">05</div>
         <h3>Comunidad de Confianza</h3>
         <div class="tagline">La mentoría no termina en la última sesión</div>
@@ -152,7 +154,7 @@
   <div class="pricing">
     <div class="pricing-label">Inversión en tu soberanía financiera</div>
     <div class="price">
-      <span class="price-currency">USDT</span>150
+      <span class="price-currency">USDT</span><span id="priceValue"><span class="skeleton skeleton-text"></span></span>
     </div>
     <div class="price-suffix">pago único · 4 sesiones en vivo · máximo 3 personas</div>
 
@@ -201,5 +203,88 @@
 </div>
 
 <script src="app.js"></script>
+
+<div class="sticky-cta" id="stickyCta">
+  <span class="sticky-cta-text">Mentoría Binance Venezuela — <span id="stickyPrice">150</span> USDT</span>
+  <button class="sticky-cta-btn" onclick="document.getElementById('reserva').scrollIntoView({behavior:'smooth'})">Reservar cupo →</button>
+</div>
+
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+
+<script>
+(function() {
+  // === Animate Value Function ===
+  function animateValue(element, start, end, duration) {
+    const startTime = performance.now();
+    function update(currentTime) {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      const current = Math.floor(start + (end - start) * easeOut);
+      element.textContent = current;
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      }
+    }
+    requestAnimationFrame(update);
+  }
+
+  // === Sticky CTA & Scroll to Top ===
+  const header = document.querySelector('.header');
+  const stickyCta = document.getElementById('stickyCta');
+  const scrollTop = document.getElementById('scrollTop');
+
+  const stickyObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) {
+        stickyCta.classList.add('visible');
+      } else {
+        stickyCta.classList.remove('visible');
+      }
+    });
+  }, { threshold: 0 });
+
+  stickyObserver.observe(header);
+
+  // Scroll to top visibility
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 500) {
+      scrollTop.classList.add('visible');
+    } else {
+      scrollTop.classList.remove('visible');
+    }
+  });
+
+  // === Module Animations ===
+  const modules = document.querySelectorAll('.module-animate');
+  const moduleObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.2 });
+
+  modules.forEach(module => moduleObserver.observe(module));
+
+  // === Loading Skeleton ===
+  const priceEl = document.getElementById('priceValue');
+  const stickyPriceEl = document.getElementById('stickyPrice');
+
+  fetch('/api/settings')
+    .then(res => res.json())
+    .then(settings => {
+      const price = settings.precio || '150';
+      priceEl.textContent = price;
+      if (stickyPriceEl) stickyPriceEl.textContent = price;
+      const badge = document.querySelector('.badge');
+      if (badge && settings.badge) badge.textContent = settings.badge;
+    })
+    .catch(() => {
+      priceEl.textContent = '150';
+    });
+})();
+</script>
+
 </body>
 </html>

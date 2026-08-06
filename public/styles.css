@@ -476,12 +476,143 @@ body {
   font-weight: 700;
 }
 
+/* Sticky CTA Bar */
+.sticky-cta {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-top: 1px solid rgba(0, 208, 132, 0.3);
+  padding: 12px 24px;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transform: translateY(100%);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.sticky-cta.visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.sticky-cta-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.sticky-cta-btn {
+  background: linear-gradient(135deg, #00d084, #00b4d8);
+  color: #0a0e17;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.sticky-cta-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 208, 132, 0.3);
+}
+
+/* Module Animations */
+.module-animate {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.module-animate.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Scroll to Top */
+.scroll-top {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #00d084, #00b4d8);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 99;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scroll-top.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-top:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 208, 132, 0.3);
+}
+
+/* Loading Skeleton */
+.skeleton {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 8px;
+  display: inline-block;
+}
+
+.skeleton-text {
+  width: 80px;
+  height: 40px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @media (max-width: 600px) {
   .header h1 { font-size: 24px; }
   .price { font-size: 42px; }
   .outcome-grid { grid-template-columns: 1fr; }
   .module { padding: 20px; }
-  .timeline { padding-left: 28px; }
-  .module::before { left: -22px; }
+  .timeline { padding-left: 20px; }
+  .module::before { left: -16px; width: 10px; height: 10px; }
   .form-section { padding: 28px 20px; }
+  
+  .sticky-cta-text { display: none; }
+  .sticky-cta::before {
+    content: 'Reservar — 150 USDT';
+    font-size: 14px;
+    font-weight: 600;
+    color: #e2e8f0;
+  }
+  
+  .form-group input {
+    font-size: 16px;
+  }
+  
+  .submit-btn {
+    min-height: 48px;
+    min-width: 120px;
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
 }
