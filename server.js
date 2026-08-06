@@ -219,7 +219,6 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10kb' }));
-app.use(express.static(path.join(__dirname, 'public')));
 
 // HTTPS enforcement (Railway handles TLS, but enforce at app level too)
 app.use((req, res, next) => {
@@ -239,6 +238,8 @@ app.use((req, res, next) => {
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   next();
 });
+
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(async (req, res, next) => {
   if (req.method !== 'GET' || req.path !== '/') return next();
