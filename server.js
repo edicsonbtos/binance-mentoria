@@ -38,9 +38,13 @@ const VISIT_CACHE_MAX = 5000;
 const AUTH_MAX_ATTEMPTS = 5;
 const AUTH_BLOCK_MS = 15 * 60 * 1000;
 const ALLOWED_SETTINGS = ['precio', 'badge', 'fecha', 'whatsapp', 'descuento_activo', 'descuento_percent'];
+const LEAD_RATE_LIMIT_MS = 5 * 60 * 1000;
+const LEAD_MAX_LENGTH = { nombre: 100, apellido: 100, correo: 254 };
+const RATE_LIMIT_CACHE_MAX = 10000;
 
 const visitCache = new Map();
 const authAttempts = new Map();
+const leadRateLimit = new Map();
 let lastDbError = null;
 
 function getClientIp(req) {
@@ -53,6 +57,14 @@ function visitCacheSet(key, value) {
     visitCache.delete(firstKey);
   }
   visitCache.set(key, value);
+}
+
+function leadRateLimitSet(key, value) {
+  if (leadRateLimit.size >= RATE_LIMIT_CACHE_MAX) {
+    const firstKey = leadRateLimit.keys().next().value;
+    leadRateLimit.delete(firstKey);
+  }
+  leadRateLimit.set(key, value);
 }
 
 function timestamp() {
@@ -209,6 +221,25 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+// HTTPS enforcement (Railway handles TLS, but enforce at app level too)
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
+  next();
+});
+
+// Security headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+
 app.use(async (req, res, next) => {
   if (req.method !== 'GET' || req.path !== '/') return next();
 
@@ -232,6 +263,18 @@ app.use(async (req, res, next) => {
     log('error', 'Error registrando visita:', err.message);
   }
 
+  next();
+});
+
+// CSP header for HTML responses
+app.use((req, res, next) => {
+  const originalSend = res.send;
+  res.send = function(body) {
+    if (typeof body === 'string' && body.includes('<!DOCTYPE html>')) {
+      res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'");
+    }
+    return originalSend.call(this, body);
+  };
   next();
 });
 
@@ -281,12 +324,30 @@ app.get('/api/settings', async (req, res) => {
 });
 
 app.post('/api/leads', async (req, res) => {
-  const { nombre, apellido, correo } = req.body;
-  const errors = [];
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const lastLead = leadRateLimit.get(ip);
 
-  if (!nombre || nombre.trim().length < 2) errors.push('Nombre debe tener al menos 2 caracteres');
-  if (!apellido || apellido.trim().length < 2) errors.push('Apellido debe tener al menos 2 caracteres');
-  if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) errors.push('Correo inválido');
+  if (lastLead && (now - lastLead) < LEAD_RATE_LIMIT_MS) {
+    const remaining = Math.ceil((LEAD_RATE_LIMIT_MS - (now - lastLead)) / 1000);
+    return res.status(429).json({ error: `Demasiadas solicitudes. Intenta en ${remaining} segundos.` });
+  }
+
+  let { nombre, apellido, correo } = req.body;
+
+  if (typeof nombre !== 'string' || typeof apellido !== 'string' || typeof correo !== 'string') {
+    return res.status(400).json({ errors: ['Campos inválidos'] });
+  }
+
+  nombre = nombre.trim().replace(/[<>]/g, '');
+  apellido = apellido.trim().replace(/[<>]/g, '');
+  correo = correo.trim().toLowerCase();
+
+  const errors = [];
+  if (!nombre || nombre.length < 2 || nombre.length > LEAD_MAX_LENGTH.nombre) errors.push('Nombre debe tener entre 2 y 100 caracteres');
+  if (!apellido || apellido.length < 2 || apellido.length > LEAD_MAX_LENGTH.apellido) errors.push('Apellido debe tener entre 2 y 100 caracteres');
+  if (!correo || !/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(correo) || correo.length > LEAD_MAX_LENGTH.correo) errors.push('Correo inválido');
+  if (req.body.coupon_code && typeof req.body.coupon_code === 'string' && req.body.coupon_code.length > 50) errors.push('Código de cupón muy largo');
 
   if (errors.length > 0) return res.status(400).json({ errors });
 
@@ -335,6 +396,7 @@ app.post('/api/leads', async (req, res) => {
 
     const lead = result.rows[0];
     log('log', `Nuevo lead: ${nombre} ${apellido} | ${correo} | ${precioFinal} USDT`);
+    leadRateLimitSet(ip, now);
 
     const msgParts = [`Nuevo lead: ${nombre.trim()} ${apellido.trim()} | ${correo.trim()}`];
     if (descuentoActivo && descuentoPercent > 0) {
@@ -436,6 +498,15 @@ process.on('SIGINT', () => {
 });
 
 initDB().then(() => {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, value] of leadRateLimit.entries()) {
+      if (now - value >= LEAD_RATE_LIMIT_MS) {
+        leadRateLimit.delete(key);
+      }
+    }
+  }, LEAD_RATE_LIMIT_MS);
+
   app.listen(PORT, () => {
     log('log', `Servidor corriendo en puerto ${PORT}`);
   });
