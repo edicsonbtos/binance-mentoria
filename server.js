@@ -240,7 +240,9 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(async (req, res, next) => {
-  if (req.method !== 'GET' || req.path !== '/') return next();
+  if (req.method !== 'GET') return next();
+  const ext = path.extname(req.path);
+  if (ext && ext !== '.html') return next();
 
   const ip = getClientIp(req);
   const now = Date.now();
@@ -496,6 +498,44 @@ app.put('/api/admin/settings', tokenAuth, async (req, res) => {
   } catch (err) {
     log('error', 'Error actualizando settings:', err.message);
     res.status(500).json({ error: 'Error actualizando settings' });
+  }
+});
+
+app.delete('/api/admin/leads/:id', tokenAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM leads WHERE id = $1', [id]);
+    log('log', `Lead ${id} eliminado`);
+    res.json({ ok: true });
+  } catch (err) {
+    log('error', 'Error eliminando lead:', err.message);
+    res.status(500).json({ error: 'Error eliminando lead' });
+  }
+});
+
+app.delete('/api/admin/leads', tokenAuth, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Array de IDs requerido' });
+    }
+    await pool.query('DELETE FROM leads WHERE id = ANY($1)', [ids]);
+    log('log', `${ids.length} leads eliminados`);
+    res.json({ ok: true, deleted: ids.length });
+  } catch (err) {
+    log('error', 'Error eliminando leads:', err.message);
+    res.status(500).json({ error: 'Error eliminando leads' });
+  }
+});
+
+app.delete('/api/admin/visits', tokenAuth, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM visits');
+    log('log', 'Visitas reseteadas');
+    res.json({ ok: true });
+  } catch (err) {
+    log('error', 'Error reseteando visitas:', err.message);
+    res.status(500).json({ error: 'Error reseteando visitas' });
   }
 });
 

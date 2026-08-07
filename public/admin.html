@@ -136,9 +136,13 @@ td{padding:10px 12px;font-size:13px;color:#cbd5e1;border-bottom:1px solid rgba(1
 
   <div class="card">
     <h2>Leads Registrados</h2>
+    <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+      <label style="font-size:13px;color:#94a3b8;cursor:pointer"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"> Seleccionar todo</label>
+      <button class="btn btn-danger" onclick="deleteSelected()" id="btnDeleteSelected" style="display:none;font-size:12px;padding:6px 12px">Eliminar seleccionados</button>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Nombre</th><th>Apellido</th><th>Correo</th><th>Precio</th><th>Fecha</th></tr></thead>
+        <thead><tr><th style="width:30px"></th><th>Nombre</th><th>Apellido</th><th>Correo</th><th>Precio</th><th>Fecha</th><th style="width:40px"></th></tr></thead>
         <tbody id="leadsBody"></tbody>
       </table>
     </div>
@@ -267,16 +271,50 @@ function renderChart(data) {
 function renderLeads(leads) {
   const tbody = document.getElementById('leadsBody');
   if (!leads.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty">Sin leads aún</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">Sin leads aún</td></tr>';
     return;
   }
   tbody.innerHTML = leads.map(l => '<tr>' +
+    '<td><input type="checkbox" class="lead-check" value="' + l.id + '" onchange="updateDeleteBtn()"></td>' +
     '<td>' + escapeHtml(l.nombre) + '</td>' +
     '<td>' + escapeHtml(l.apellido) + '</td>' +
     '<td>' + escapeHtml(l.correo) + '</td>' +
     '<td>' + escapeHtml(l.precio_final) + ' USDT</td>' +
     '<td>' + escapeHtml(new Date(l.created_at).toLocaleDateString('es-VE')) + '</td>' +
+    '<td><button onclick="deleteLead(\'' + l.id + '\')" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:16px" title="Eliminar">✕</button></td>' +
   '</tr>').join('');
+}
+
+function toggleSelectAll() {
+  const checked = document.getElementById('selectAll').checked;
+  document.querySelectorAll('.lead-check').forEach(cb => cb.checked = checked);
+  updateDeleteBtn();
+}
+
+function updateDeleteBtn() {
+  const count = document.querySelectorAll('.lead-check:checked').length;
+  document.getElementById('btnDeleteSelected').style.display = count > 0 ? 'inline-block' : 'none';
+}
+
+async function deleteLead(id) {
+  if (!confirm('¿Eliminar este lead?')) return;
+  try {
+    await authFetch('/api/admin/leads/' + id, { method: 'DELETE' });
+    loadLeads();
+  } catch (e) { alert('Error eliminando lead'); }
+}
+
+async function deleteSelected() {
+  const ids = Array.from(document.querySelectorAll('.lead-check:checked')).map(cb => cb.value);
+  if (!ids.length || !confirm('¿Eliminar ' + ids.length + ' leads?')) return;
+  try {
+    await authFetch('/api/admin/leads', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids })
+    });
+    loadLeads();
+  } catch (e) { alert('Error eliminando leads'); }
 }
 
 async function saveSettings() {
